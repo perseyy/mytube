@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{{ video['title'] }} - myYouTube{% endblock %}
+
+{% block content %}
+<h2>{{ video['title'] }}</h2>
+<div class="bg-dark rounded overflow-hidden shadow">
+    <video controls autoplay class="w-100" poster="/thumbnail/{{ video['filename'] }}">
+        <source src="/video_file/{{ video['filename'] }}" type="video/mp4">
+    </video>
+</div>
+<div class="mt-3">
+    <p>{{ video['description'] }}</p>
+    <p class="text-muted">{{ video['views'] }} просмотров • {{ video['upload_date'][:10] }}</p>
+    <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-outline-primary" onclick="likeVideo('{{ video['id'] }}')">
+            <i class="bi bi-hand-thumbs-up"></i> Лайк {{ likes }}
+        </button>
+    </div>
+</div>
+
+<hr>
+<h5>Комментарии</h5>
+{% if is_logged_in %}
+<form id="commentForm" class="mb-3">
+    <textarea class="form-control mb-2" id="commentText" rows="2" placeholder="Напишите комментарий..." required></textarea>
+    <button type="submit" class="btn btn-primary">Отправить</button>
+</form>
+{% else %}
+<p class="text-muted">Войдите, чтобы оставить комментарий</p>
+{% endif %}
+
+<div id="commentsList">
+    {% for c in comments %}
+    <div class="border-bottom py-2">
+        <small class="text-muted">{{ c['date'][:19] }}</small><br>
+        {{ c['text'] }}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function likeVideo(vid) {
+        fetch('/like/' + vid, {
+            method: 'POST',
+            credentials: 'include'
+        })
+        .then(res => {
+            if (!res.ok) return res.json().then(err => { throw err; });
+            return res.json();
+        })
+        .then(data => {
+            alert('Лайк: ' + data.likes);
+            location.reload();
+        })
+        .catch(err => {
+            alert('Ошибка: ' + (err.error || 'Не авторизован'));
+        });
+    }
+
+    const commentForm = document.getElementById('commentForm');
+    if (commentForm) {
+        commentForm.onsubmit = (e) => {
+            e.preventDefault();
+            const text = document.getElementById('commentText').value.trim();
+            if (!text) {
+                alert('Текст комментария не может быть пустым');
+                return;
+            }
+            fetch('/comment/{{ video['id'] }}', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({text: text})
+            })
+            .then(res => {
+                if (!res.ok) return res.json().then(err => { throw err; });
+                return res.json();
+            })
+            .then(() => location.reload())
+            .catch(err => alert('Ошибка: ' + (err.error || 'Не удалось добавить комментарий')));
+        };
+    }
+</script>
+{% endblock %}
